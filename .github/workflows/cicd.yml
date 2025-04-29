@@ -95,21 +95,19 @@ jobs:
     - name: Check cluster access
       run: kubectl get nodes
 
-    # Ensure the namespace exists
     - name: Ensure namespace exists
       run: kubectl create namespace flask-app || echo "Namespace flask-app already exists"
 
-    - name: Replace image tag in deployment file
+    - name: Substitute GITHUB_SHA in deployment.yaml
       run: |
-        sed -i "s|flasktest-app:latest|flasktest-app:${{ github.sha }}|g" deployment.yaml
+        sed "s/\${GITHUB_SHA}/${GITHUB_SHA}/g" deployment.yaml > deployment-modified.yaml
 
-    - name: Deploy to EKS
-      run: kubectl apply -f deployment.yaml
+    - name: Apply modified deployment
+      run: kubectl apply -f deployment-modified.yaml
 
-    # Check if the deployment exists before restarting
-    - name: Check if deployment exists
-      run: |
-        kubectl get deployment flask-app -n flask-app || echo "Deployment flask-app not found"
+    - name: Check if deployment exists in flask-app namespace
+      run: kubectl get deployment flask-app -n flask-app || echo "Deployment flask-app not found"
 
     - name: Restart deployment to pull the latest image
-      run: kubectl rollout restart deployment flask-app -n flask-app
+      run: |
+        kubectl rollout restart deployment flask-app -n flask-app
