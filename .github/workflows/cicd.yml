@@ -96,4 +96,4 @@ jobs:
     - name: Apply deployment
       run: |
         kubectl apply -f deployment.yaml
-        kubectl rollout status deployment/flask-app -n flask-app --timeout=120s
+        kubectl rollout status deployment/flask-app -n flask-app 
