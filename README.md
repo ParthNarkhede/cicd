@@ -1,0 +1,1 @@
+## Creation of a CI/CD pipeline for a basic flask application using GitHub Actions, Docker and Kubernetes cluster
