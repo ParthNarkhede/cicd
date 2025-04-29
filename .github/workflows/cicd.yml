@@ -95,6 +95,10 @@ jobs:
     - name: Check cluster access
       run: kubectl get nodes
 
+    # Ensure the namespace exists
+    - name: Ensure namespace exists
+      run: kubectl create namespace flask-app || echo "Namespace flask-app already exists"
+
     - name: Replace image tag in deployment file
       run: |
         sed -i "s|flasktest-app:latest|flasktest-app:${{ github.sha }}|g" deployment.yaml
