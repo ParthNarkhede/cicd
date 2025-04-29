@@ -2,11 +2,14 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: flask-app
+  namespace: flask-app
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: flask-app
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
@@ -14,15 +17,23 @@ spec:
     spec:
       containers:
         - name: flask-app
-          # Image uses dynamic Git SHA tag for deployment
-          image: parthnarkhede04/flasktest-app:${GITHUB_SHA}
+          image: parthnarkhede04/flasktest-app:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: flask-service
+  namespace: flask-app
 spec:
   type: LoadBalancer
   ports:
