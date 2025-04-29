@@ -9,7 +9,7 @@ spec:
     matchLabels:
       app: flask-app
   strategy:
-    type: Recreate
+    type: Recreate  # Ensures clean deployment of new version
   template:
     metadata:
       labels:
@@ -18,7 +18,7 @@ spec:
       containers:
         - name: flask-app
           image: parthnarkhede04/flasktest-app:latest
-          imagePullPolicy: Always
+          imagePullPolicy: Always  # Critical for CI/CD
           ports:
             - containerPort: 5000
           resources:

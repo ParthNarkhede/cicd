@@ -92,6 +92,11 @@ jobs:
       run: |
         kubectl apply -f deployment.yaml -n flask-app
         
+  # Add the rollout restart here
+    - name: Force redeployment to pull latest image
+      run: |
+        kubectl rollout restart deployment/flask-app -n flask-app
+
     - name: Verify deployment
       run: |
         kubectl rollout status deployment/flask-app -n flask-app --timeout=90s
