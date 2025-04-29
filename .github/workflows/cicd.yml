@@ -91,7 +91,7 @@ jobs:
         IMAGE_TAG: ${{ needs.docker-build-and-publish.outputs.image-tag }}
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       run: |
-        envsubst < k8s/deployment-template.yaml > k8s/deployment.yaml
+        envsubst < deployment-template.yaml > deployment.yaml
 
     - name: Apply deployment
       run: |
