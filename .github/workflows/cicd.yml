@@ -95,6 +95,11 @@ jobs:
         echo "Generated deployment.yaml:"
         cat deployment.yaml
 
+    - name: Delete existing deployment (force fresh pods)
+      run: |
+        kubectl delete deployment flask-app -n flask-app || true
+
+
 
     - name: Apply deployment
       run: |
