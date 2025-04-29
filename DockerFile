@@ -1,0 +1,20 @@
+# Use a small Python base image
+FROM python:3.11-slim
+
+# Set working directory inside container
+WORKDIR /app
+
+# Copy only requirements first (for layer caching)
+COPY requirements.txt .
+
+# Install dependencies without cache (smaller image)
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application
+COPY . .
+
+# Tell Docker what port your app listens on (matches containerPort in Kubernetes YAML)
+EXPOSE 5000
+
+# Run the app using python directly (best for Kubernetes)
+CMD ["python", "app.py"]
