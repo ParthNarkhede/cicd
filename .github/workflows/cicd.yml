@@ -9,7 +9,6 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout source code
       uses: actions/checkout@v4
@@ -31,10 +30,16 @@ jobs:
   docker-build-and-publish:
     runs-on: ubuntu-latest
     needs: build-and-test
+    outputs:
+      image-tag: ${{ steps.set-tag.outputs.tag }}
 
     steps:
     - name: Checkout source code
       uses: actions/checkout@v4
+
+    - name: Set dynamic image tag
+      id: set-tag
+      run: echo "tag=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
@@ -52,18 +57,17 @@ jobs:
         file: ./DockerFile
         push: true
         tags: |
-          ${{ secrets.DOCKER_USERNAME }}/flasktest-app:latest
-
-    - name: Image Digest
-      run: echo ${{ steps.docker_build.outputs.digest }}
+          ${{ secrets.DOCKER_USERNAME }}/flasktest-app:${{ steps.set-tag.outputs.tag }}
 
   deploy:
     needs: docker-build-and-publish
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Install envsubst
+      run: sudo apt-get install -y gettext
 
     - name: Set up kubectl
       uses: azure/setup-kubectl@v3
@@ -82,23 +86,14 @@ jobs:
         mkdir -p $HOME/.kube
         echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > $HOME/.kube/config
 
-    - name: Check cluster access
-      run: kubectl get nodes
-
-    - name: Ensure namespace exists
-      run: kubectl create namespace flask-app || true
-
-    # Add the forced redeployment here
-    - name: Force complete redeployment
+    - name: Prepare deployment file with updated image tag
+      env:
+        IMAGE_TAG: ${{ needs.docker-build-and-publish.outputs.image-tag }}
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       run: |
-        # Delete the deployment (will not delete the service)
-        kubectl delete deployment flask-app -n flask-app --ignore-not-found
-        # Recreate from manifest
-        kubectl apply -f deployment.yaml -n flask-app
-        # Wait for completion
+        envsubst < k8s/deployment-template.yaml > k8s/deployment.yaml
+
+    - name: Apply deployment
+      run: |
+        kubectl apply -f k8s/deployment.yaml
         kubectl rollout status deployment/flask-app -n flask-app --timeout=120s
-
-    # Keep your existing verification step
-    - name: Verify deployment
-      run: |
-        kubectl rollout status deployment/flask-app -n flask-app --timeout=90s
