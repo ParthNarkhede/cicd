@@ -82,7 +82,9 @@ jobs:
       run: |
         mkdir -p $HOME/.kube
         echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > $HOME/.kube/config
-
+      
+    - name: Check cluster access
+      run: kubectl get nodes
 
     - name: Deploy to EKS
       run: kubectl apply -f deployment.yaml
