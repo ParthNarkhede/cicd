@@ -14,7 +14,8 @@ spec:
     spec:
       containers:
         - name: flask-app
-          image: parthnarkhede04/flasktest-app:latest
+          # Image uses dynamic Git SHA tag for deployment
+          image: parthnarkhede04/flasktest-app:${GITHUB_SHA}
           ports:
             - containerPort: 5000
 ---
