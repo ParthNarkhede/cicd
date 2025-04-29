@@ -57,7 +57,7 @@ jobs:
         file: ./DockerFile
         push: true
         tags: |
-          ${{ secrets.DOCKER_USERNAME }}/flasktest-app:${{ steps.set-tag.outputs.tag }}
+          ${{ secrets.DOCKER_USERNAME }}/flask-app:${{ steps.set-tag.outputs.tag }}
 
   deploy:
     needs: docker-build-and-publish
