@@ -88,15 +88,17 @@ jobs:
     - name: Ensure namespace exists
       run: kubectl create namespace flask-app || true
 
-    - name: Apply Kubernetes manifests
+    # Add the forced redeployment here
+    - name: Force complete redeployment
       run: |
+        # Delete the deployment (will not delete the service)
+        kubectl delete deployment flask-app -n flask-app --ignore-not-found
+        # Recreate from manifest
         kubectl apply -f deployment.yaml -n flask-app
-        
-  # Add the rollout restart here
-    - name: Force redeployment to pull latest image
-      run: |
-        kubectl rollout restart deployment/flask-app -n flask-app
+        # Wait for completion
+        kubectl rollout status deployment/flask-app -n flask-app --timeout=120s
 
+    # Keep your existing verification step
     - name: Verify deployment
       run: |
         kubectl rollout status deployment/flask-app -n flask-app --timeout=90s
