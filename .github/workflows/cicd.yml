@@ -105,6 +105,10 @@ jobs:
         export DOCKER_USERNAME=${{ env.DOCKER_USERNAME }}
         export IMAGE_TAG=${{ needs.docker-build-and-publish.outputs.image-tag }}
         envsubst < deployment-template.yaml > deployment-processed.yaml
+
+        echo "==== deployment-processed.yaml ===="
+        cat deployment-processed.yaml
+        echo "==================================="
         
         # Apply deployment
         kubectl apply -f deployment-processed.yaml

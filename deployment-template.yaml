@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: flask-app
-          image: {{DOCKER_USERNAME}}/flask-app:{{IMAGE_TAG}}  # Will be replaced during deployment
+          image: ${DOCKER_USERNAME}/flask-app:${IMAGE_TAG}  # Will be replaced during deployment
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
