@@ -7,7 +7,8 @@ app = Flask(__name__)
 def home():
     return render_template_string('''
         <h1>Hello from Flask app deployed using GitHub Actions and Kubernetes!</h1>
-        <p>Very Welcome from first deployment, but new commit</p>
+        <p>Very Welcome from first deployment, but new commit.</p>
+        <p>Very Welcome from second deployment, but second commit and update</p>
         <form action="/about">
             <button type="submit">Go to About Page</button>
         </form>
