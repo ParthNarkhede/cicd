@@ -19,7 +19,7 @@ def home():
 def about():
     return render_template_string('''
         <h1>About Page</h1>
-        <p>This is a second page from your Flask app! Now modified from the next commit</p>
+        <p>This is a second page from your Flask app! Now modified from the next commit.This is a chnage in file</p>
         <p>And this is the second commit from the second deployment</p>
         <a href="/">Back to Home</a>
     ''')
