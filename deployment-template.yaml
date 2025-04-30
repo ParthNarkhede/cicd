@@ -4,12 +4,15 @@ metadata:
   name: flask-app
   namespace: flask-app
 spec:
-  replicas: 1
+  replicas: 2  # Better to have at least 2 for high availability
   selector:
     matchLabels:
       app: flask-app
   strategy:
-    type: Recreate
+    type: RollingUpdate  # Better than Recreate for zero downtime
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -17,10 +20,13 @@ spec:
     spec:
       containers:
         - name: flask-app
-          image: ${DOCKER_USERNAME}/flask-app:${IMAGE_TAG}
+          image: {{DOCKER_USERNAME}}/flask-app:{{IMAGE_TAG}}  # Will be replaced during deployment
           imagePullPolicy: Always
           ports:
             - containerPort: 5000
+          env:
+            - name: FLASK_ENV
+              value: "production"
           resources:
             requests:
               cpu: "100m"
@@ -28,6 +34,18 @@ spec:
             limits:
               cpu: "500m"
               memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service
@@ -39,5 +57,11 @@ spec:
   ports:
     - port: 80
       targetPort: 5000
+      protocol: TCP
   selector:
     app: flask-app
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: flask-app

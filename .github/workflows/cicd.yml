@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  AWS_REGION: us-east-1
+  EKS_CLUSTER: flask-cluster
+  NAMESPACE: flask-app
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -22,6 +28,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install pytest
 
     - name: Run tests
       run: |
@@ -39,7 +46,7 @@ jobs:
 
     - name: Set dynamic image tag
       id: set-tag
-      run: echo "tag=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+      run: echo "tag=$(date +%Y%m%d%H%M%S)-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
@@ -58,50 +65,56 @@ jobs:
         push: true
         tags: |
           ${{ secrets.DOCKER_USERNAME }}/flask-app:${{ steps.set-tag.outputs.tag }}
+          ${{ secrets.DOCKER_USERNAME }}/flask-app:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
-  deploy:
-    needs: docker-build-and-publish
+  deploy-to-eks:
     runs-on: ubuntu-latest
+    needs: docker-build-and-publish
+    environment: production
     steps:
-    - name: Checkout code
+    - name: Checkout source code
       uses: actions/checkout@v4
 
-    - name: Install envsubst
-      run: sudo apt-get install -y gettext
-
-    - name: Set up kubectl
-      uses: azure/setup-kubectl@v3
-      with:
-        version: 'v1.29.0'
-
-    - name: Set up AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+        aws-region: ${{ env.AWS_REGION }}
 
-    - name: Set up kubeconfig
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v3
+
+    - name: Install envsubst
+      run: sudo apt-get install gettext-base -y
+
+    - name: Set up kubeconfig from GitHub Secret
       run: |
         mkdir -p $HOME/.kube
         echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > $HOME/.kube/config
 
-    - name: Prepare deployment file with updated image tag
-      env:
-        IMAGE_TAG: ${{ needs.docker-build-and-publish.outputs.image-tag }}
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+
+    - name: Deploy to EKS cluster
       run: |
-        envsubst < deployment-template.yaml > deployment.yaml
-        echo "Generated deployment.yaml:"
-        cat deployment.yaml
+        # Create namespace if not exists
+        kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+        
+        # Substitute variables in deployment.yaml
+        export DOCKER_USERNAME=${{ env.DOCKER_USERNAME }}
+        export IMAGE_TAG=${{ needs.docker-build-and-publish.outputs.image-tag }}
+        envsubst < deployment-template.yaml > deployment-processed.yaml
+        
+        # Apply deployment
+        kubectl apply -f deployment-processed.yaml
+        
+        # Verify deployment
+        kubectl rollout status deployment/flask-app -n ${{ env.NAMESPACE }}
+        kubectl get pods -n ${{ env.NAMESPACE }}
+        kubectl get svc -n ${{ env.NAMESPACE }}
 
-    - name: Delete existing deployment (force fresh pods)
+    - name: Get service URL
       run: |
-        kubectl delete deployment flask-app -n flask-app || true
-
-
-
-    - name: Apply deployment
-      run: |
-        kubectl apply -f deployment.yaml
-        kubectl rollout status deployment/flask-app -n flask-app 
+        kubectl get svc flask-service -n ${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+        echo ""
